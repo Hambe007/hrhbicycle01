@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Hotel Bicycle Management System</title>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #f5f6fa;
+        }
+
+        .header {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .tab-container {
+            margin-bottom: 20px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            background-color: #f0f0f0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .tab-button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .search-section {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .search-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        input[type="number"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .print-btn {
+            background-color: #2196F3;
+        }
+
+        .edit-btn {
+            background-color: #ff9800;
+        }
+
+        .delete-btn {
+            background-color: #f44336;
+        }
+
+        .return-btn {
+            background-color: #4CAF50;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .status-returned {
+            color: #888;
+            font-style: italic;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 1000;
+        }
+
+        .priority-high {
+            background-color: #ffebee;
+            border-left: 4px solid #f44336;
+        }
+
+        .priority-medium {
+            background-color: #fff3e0;
+            border-left: 4px solid #ff9800;
+        }
+
+        .priority-low {
+            background-color: #e8f5e9;
+            border-left: 4px solid #4caf50;
+        }
+
+        .inventory-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        @media (max-width: 768px) {
+            .search-group {
+                flex-direction: column;
+            }
+            
+            .search-group input,
+            .search-group button {
+                width: 100%;
+            }
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            
+            body {
+                padding: 0;
+                background: white;
+            }
+
+            table {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Enhanced Hotel Bicycle Management System</h1>
+    </div>
+
+    <div class="tab-container no-print">
+        <div class="tab-buttons">
+            <button class="tab-button active" onclick="showTab('issuing')">Bicycle Issuing</button>
+            <button class="tab-button" onclick="showTab('arrivals')">Arrival Guests</button>
+            <button class="tab-button" onclick="showTab('inventory')">Bicycle Inventory</button>
+            <button class="tab-button" onclick="showTab('faulty')">Faulty Bicycles</button>
+        </div>
+    </div>
+
+    <!-- Bicycle Issuing Tab -->
+    <div id="issuingTab" class="tab-content active">
+        <div class="search-section no-print">
+            <div class="search-group">
+                <input type="text" id="bicycleSearch" placeholder="Search by Bicycle Number...">
+                <button onclick="searchByBicycle()">Search Bicycle</button>
+            </div>
+            <div class="search-group">
+                <input type="text" id="roomSearch" placeholder="Search by Room Number...">
+                <button onclick="searchByRoom()">Search Room</button>
+            </div>
+            <div class="search-group">
+                <button onclick="resetSearch()">Reset Search</button>
+                <button class="print-btn" onclick="printRecords()">Print Records</button>
+            </div>
+        </div>
+
+        <form id="bicycleForm" class="form-section no-print">
+            <h2>Issue Bicycle</h2>
+            <input type="hidden" id="editIndex">
+            
+            <div class="form-grid">
+                <div>
+                    <label for="roomNumber">Room Number:</label>
+                    <input type="text" id="roomNumber" required>
+                </div>
+                
+                <div>
+                    <label for="guestName">Guest Name:</label>
+                    <input type="text" id="guestName" required>
+                </div>
+                
+                <div>
+                    <label for="issueDate">Date of Issue:</label>
+                    <input type="date" id="issueDate" required>
+                </div>
+                
+                <div>
+                    <label for="departureDate">Date of Departure:</label>
+                    <input type="date" id="departureDate" required>
+                </div>
+                
+                <div>
+                    <label for="bicycleNumber">Bicycle Number:</label>
+                    <select id="bicycleNumber" required>
+                        <option value="">Select Bicycle</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button type="submit">Save Record</button>
+        </form>
+
+        <table id="recordsTable">
+            <thead>
+                <tr>
+                    <th>Room Number</th>
+                    <th>Guest Name</th>
+                    <th>Issue Date</th>
+                    <th>Departure Date</th>
+                    <th>Bicycle Number</th>
+                    <th>Status</th>
+                    <th class="no-print">Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- Arrival Guests Tab -->
+    <div id="arrivalsTab" class="tab-content">
+        <div class="search-section no-print">
+            <div class="search-group">
+                <input type="text" id="arrivalSearch" placeholder="Search by Room Number or Guest Name...">
+                <button onclick="searchArrivals()">Search</button>
+                <button onclick="resetArrivalSearch()">Reset</button>
+                <button class="print-btn" onclick="printArrivals()">Print Arrivals</button>
+            </div>
+        </div>
+
+        <form id="arrivalForm" class="form-section no-print">
+            <h2>Register Arrival Guest</h2>
+            <input type="hidden" id="arrivalEditIndex">
+            
+            <div class="form-grid">
+                <div>
+                    <label for="arrivalRoomNumber">Room Number:</label>
+                    <input type="text" id="arrivalRoomNumber" required>
+                </div>
+                
+                <div>
+                    <label for="arrivalGuestName">Guest Name:</label>
+                    <input type="text" id="arrivalGuestName" required>
+                </div>
+                
+                <div>
+                    <label for="arrivalDate">Arrival Date:</label>
+                    <input type="date" id="arrivalDate" required>
+                </div>
+                
+                <div>
+                    <label for="arrivalDepartureDate">Departure Date:</label>
+                    <input type="date" id="arrivalDepartureDate" required>
+                </div>
+                
+                <div>
+                    <label for="bicycleRequested">Bicycle Requested:</label>
+                    <select id="bicycleRequested" required>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button type="submit">Register Guest</button>
+        </form>
+
+        <table id="arrivalsTable">
+            <thead>
+                <tr>
+                    <th>Room Number</th>
+                    <th>Guest Name</th>
+                    <th>Arrival Date</th>
+                    <th>Departure Date</th>
+                    <th>Bicycle Requested</th>
+                    <th>Status</th>
+                    <th class="no-print">Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- Inventory Tab -->
+    <div id="inventoryTab" class="tab-content">
+        <div class="inventory-stats">
+            <div class="stat-card">
+                <h3>Total Bicycles</h3>
+                <div id="totalBicycles" class="stat-number">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Available</h3>
+                <div id="availableBicycles" class="stat-number">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Issued</h3>
+                <div id="issuedBicycles" class="stat-number">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Under Maintenance</h3>
+                <div id="underMaintenanceBicycles" class="stat-number">0</div>
+            </div>
+        </div>
+
+        <div class="form-section no-print">
+            <h2>Add New Bicycle</h2>
+            <div class="form-grid">
+                <div>
+                    <label for="newBicycleNumber">Bicycle Number:</label>
+                    <input type="text" id="newBicycleNumber" required>
+                </div>
+                <div>
+                    <button onclick="addNewBicycle()">Add Bicycle</button>
+                </div>
+            </div>
+        </div>
+
+        <table id="inventoryTable">
+            <thead>
+                <tr>
+                    <th>Bicycle Number</th>
+                    <th>Status</th>
+                    <th>Last Maintenance</th>
+                    <th class="no-print">Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- Notification div -->
+    <div id="notification" class="notification"></div>
+</body>
+<script>
+    // Firebase Configuration
+    const firebaseConfig = {
+        // Replace with your Firebase config
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_AUTH_DOMAIN",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_STORAGE_BUCKET",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+    
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    
+    // Global variables
+    let records = [];
+    let arrivals = [];
+    let inventory = [];
+    const form = document.getElementById('bicycleForm');
+    const arrivalForm = document.getElementById('arrivalForm');
+    
+    // Utility Functions
+    function formatDate(dateString) {
+        return new Date(dateString).toLocaleDateString();
+    }
+    
+    // Tab Management
+    function showTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-button').forEach(button => button.classList.remove('active'));
+        
+        document.getElementById(tabName + 'Tab').classList.add('active');
+        document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+    
+        // Update data when switching tabs
+        switch(tabName) {
+            case 'issuing':
+                loadRecords();
+                break;
+            case 'arrivals':
+                loadArrivals();
+                break;
+            case 'inventory':
+                loadInventory();
+                break;
+        }
+    }
+    
+    // Notification System
+    function showNotification(message, type = 'success') {
+        const notification = document.getElementById('notification');
+        notification.textContent = message;
+        notification.style.backgroundColor = type === 'success' ? '#4CAF50' : '#f44336';
+        notification.style.display = 'block';
+        
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 3000);
+    }
+    
+    // Data Validation Functions
+    function validateDates(startDate, endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        if (end < start) {
+            showNotification('Departure date cannot be earlier than arrival date', 'error');
+            return false;
+        }
+        return true;
+    }
+    
+    function validateRoomNumber(roomNumber) {
+        const roomRegex = /^\d{3,4}$/;  // Assumes 3-4 digit room numbers
+        if (!roomRegex.test(roomNumber)) {
+            showNotification('Invalid room number format', 'error');
+            return false;
+        }
+        return true;
+    }
+    
+    function validateBicycleNumber(bicycleNumber) {
+        const bikeRegex = /^BIKE\d{3}$/;  // Format: BIKE001, BIKE002, etc.
+        if (!bikeRegex.test(bicycleNumber)) {
+            showNotification('Invalid bicycle number format (should be BIKE001 format)', 'error');
+            return false;
+        }
+        return true;
+    }
+    
+    // Initialize available bicycles dropdown
+    function updateBicycleDropdown() {
+        const dropdown = document.getElementById('bicycleNumber');
+        dropdown.innerHTML = '<option value="">Select Bicycle</option>';
+        
+        db.collection('bicycleInventory')
+            .where('status', '==', 'Available')
+            .get()
+            .then((snapshot) => {
+                snapshot.forEach((doc) => {
+                    const bicycle = doc.data();
+                    const option = document.createElement('option');
+                    option.value = bicycle.bicycleNumber;
+                    option.textContent = bicycle.bicycleNumber;
+                    dropdown.appendChild(option);
+                });
+            })
+            .catch((error) => {
+                console.error("Error loading bicycles: ", error);
+                showNotification('Error loading available bicycles', 'error');
+            });
+    }
+    
+    // Update Inventory Statistics
+    function updateInventoryStats() {
+        db.collection('bicycleInventory').get()
+            .then((snapshot) => {
+                let stats = {
+                    total: snapshot.size,
+                    available: 0,
+                    issued: 0,
+                    maintenance: 0
+                };
+    
+                snapshot.forEach((doc) => {
+                    const status = doc.data().status;
+                    switch(status) {
+                        case 'Available':
+                            stats.available++;
+                            break;
+                        case 'Issued':
+                            stats.issued++;
+                            break;
+                        case 'Maintenance':
+                            stats.maintenance++;
+                            break;
+                    }
+                });
+    
+                // Update stats display
+                document.getElementById('totalBicycles').textContent = stats.total;
+                document.getElementById('availableBicycles').textContent = stats.available;
+                document.getElementById('issuedBicycles').textContent = stats.issued;
+                document.getElementById('underMaintenanceBicycles').textContent = stats.maintenance;
+            })
+            .catch((error) => {
+                console.error("Error updating inventory stats: ", error);
+                showNotification('Error updating inventory statistics', 'error');
+            });
+    }
+    
+    // Initialize system
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set default dates
+        document.getElementById('issueDate').valueAsDate = new Date();
+        document.getElementById('arrivalDate').valueAsDate = new Date();
+        
+        // Load initial data
+        loadRecords();
+        updateBicycleDropdown();
+        updateInventoryStats();
+    
+        // Set up real-time listeners
+        setupRealTimeListeners();
+    });
+    
+    function setupRealTimeListeners() {
+        // Listen for bicycle records changes
+        db.collection('bicycleRecords')
+            .onSnapshot((snapshot) => {
+                records = [];
+                snapshot.forEach((doc) => {
+                    records.push({ id: doc.id, ...doc.data() });
+                });
+                displayRecords();
+            });
+    
+        // Listen for arrival changes
+        db.collection('arrivals')
+            .onSnapshot((snapshot) => {
+                arrivals = [];
+                snapshot.forEach((doc) => {
+                    arrivals.push({ id: doc.id, ...doc.data() });
+                });
+                displayArrivals();
+            });
+    
+        // Listen for inventory changes
+        db.collection('bicycleInventory')
+            .onSnapshot((snapshot) => {
+                inventory = [];
+                snapshot.forEach((doc) => {
+                    inventory.push({ id: doc.id, ...doc.data() });
+                });
+                displayInventory();
+                updateInventoryStats();
+                updateBicycleDropdown();
+            });
+    }
+    </script>
+    <script>
+        // Load and display records
+        function loadRecords() {
+            db.collection('bicycleRecords')
+                .orderBy('timestamp', 'desc')
+                .get()
+                .then((snapshot) => {
+                    records = [];
+                    snapshot.forEach((doc) => {
+                        records.push({ id: doc.id, ...doc.data() });
+                    });
+                    displayRecords();
+                })
+                .catch((error) => {
+                    console.error("Error loading records: ", error);
+                    showNotification('Error loading records', 'error');
+                });
+        }
+        
+        function displayRecords(recordsToShow = records) {
+            const table = document.getElementById('recordsTable').getElementsByTagName('tbody')[0];
+            table.innerHTML = '';
+            
+            recordsToShow.forEach((record, index) => {
+                const row = table.insertRow();
+                const statusClass = record.status === 'Returned' ? 'status-returned' : '';
+                
+                row.innerHTML = `
+                    <td>${record.roomNumber}</td>
+                    <td>${record.guestName}</td>
+                    <td>${formatDate(record.issueDate)}</td>
+                    <td>${formatDate(record.departureDate)}</td>
+                    <td>${record.bicycleNumber}</td>
+                    <td class="${statusClass}">${record.status || 'Active'}</td>
+                    <td class="no-print">
+                        ${record.status !== 'Returned' ? `
+                            <button class="edit-btn" onclick="editRecord(${index})">Edit</button>
+                            <button class="return-btn" onclick="markAsReturned('${record.id}')">Return</button>
+                            <button class="delete-btn" onclick="deleteRecord('${record.id}')">Delete</button>
+                        ` : ''}
+                    </td>
+                `;
+            });
+        }
+        
+        // Form submission handler
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const recordData = {
+                roomNumber: document.getElementById('roomNumber').value,
+                guestName: document.getElementById('guestName').value,
+                issueDate: document.getElementById('issueDate').value,
+                departureDate: document.getElementById('departureDate').value,
+                bicycleNumber: document.getElementById('bicycleNumber').value,
+                status: 'Active',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+        
+            // Validate data
+            if (!validateDates(recordData.issueDate, recordData.departureDate)) return;
+            if (!validateRoomNumber(recordData.roomNumber)) return;
+        
+            const editIndex = document.getElementById('editIndex').value;
+        
+            if (editIndex !== '') {
+                updateRecord(recordData, editIndex);
+            } else {
+                addRecord(recordData);
+            }
+        });
+        
+        function addRecord(recordData) {
+            // First update bicycle status
+            db.collection('bicycleInventory')
+                .where('bicycleNumber', '==', recordData.bicycleNumber)
+                .get()
+                .then((snapshot) => {
+                    if (!snapshot.empty) {
+                        const bicycleDoc = snapshot.docs[0];
+                        return bicycleDoc.ref.update({ status: 'Issued' });
+                    }
+                })
+                .then(() => {
+                    // Then add the record
+                    return db.collection('bicycleRecords').add(recordData);
+                })
+                .then(() => {
+                    showNotification('Record added successfully');
+                    form.reset();
+                    updateInventoryStats();
+                    document.getElementById('editIndex').value = '';
+                })
+                .catch((error) => {
+                    console.error("Error adding record: ", error);
+                    showNotification('Error adding record', 'error');
+                });
+        }
+        
+        function updateRecord(recordData, index) {
+            const docId = records[index].id;
+            const oldBicycleNumber = records[index].bicycleNumber;
+        
+            // Update old bicycle status if changed
+            let updatePromises = [];
+            if (oldBicycleNumber !== recordData.bicycleNumber) {
+                updatePromises.push(
+                    db.collection('bicycleInventory')
+                        .where('bicycleNumber', '==', oldBicycleNumber)
+                        .get()
+                        .then((snapshot) => {
+                            if (!snapshot.empty) {
+                                return snapshot.docs[0].ref.update({ status: 'Available' });
+                            }
+                        })
+                );
+        
+                updatePromises.push(
+                    db.collection('bicycleInventory')
+                        .where('bicycleNumber', '==', recordData.bicycleNumber)
+                        .get()
+                        .then((snapshot) => {
+                            if (!snapshot.empty) {
+                                return snapshot.docs[0].ref.update({ status: 'Issued' });
+                            }
+                        })
+                );
+            }
+        
+            // Update record
+            Promise.all(updatePromises)
+                .then(() => {
+                    return db.collection('bicycleRecords').doc(docId).update(recordData);
+                })
+                .then(() => {
+                    showNotification('Record updated successfully');
+                    form.reset();
+                    document.getElementById('editIndex').value = '';
+                    updateInventoryStats();
+                })
+                .catch((error) => {
+                    console.error("Error updating record: ", error);
+                    showNotification('Error updating record', 'error');
+                });
+        }
+        
+        function editRecord(index) {
+            const record = records[index];
+            document.getElementById('roomNumber').value = record.roomNumber;
+            document.getElementById('guestName').value = record.guestName;
+            document.getElementById('issueDate').value = record.issueDate;
+            document.getElementById('departureDate').value = record.departureDate;
+            document.getElementById('bicycleNumber').value = record.bicycleNumber;
+            document.getElementById('editIndex').value = index;
+        }
+        
+        function deleteRecord(id) {
+            if (confirm('Are you sure you want to delete this record?')) {
+                const record = records.find(r => r.id === id);
+                
+                // Update bicycle status first
+                db.collection('bicycleInventory')
+                    .where('bicycleNumber', '==', record.bicycleNumber)
+                    .get()
+                    .then((snapshot) => {
+                        if (!snapshot.empty) {
+                            return snapshot.docs[0].ref.update({ status: 'Available' });
+                        }
+                    })
+                    .then(() => {
+                        return db.collection('bicycleRecords').doc(id).delete();
+                    })
+                    .then(() => {
+                        showNotification('Record deleted successfully');
+                        updateInventoryStats();
+                    })
+                    .catch((error) => {
+                        console.error("Error deleting record: ", error);
+                        showNotification('Error deleting record', 'error');
+                    });
+            }
+        }
+        
+        function markAsReturned(id) {
+            if (confirm('Mark this bicycle as returned?')) {
+                const record = records.find(r => r.id === id);
+                
+                // Update bicycle status first
+                db.collection('bicycleInventory')
+                    .where('bicycleNumber', '==', record.bicycleNumber)
+                    .get()
+                    .then((snapshot) => {
+                        if (!snapshot.empty) {
+                            return snapshot.docs[0].ref.update({ status: 'Available' });
+                        }
+                    })
+                    .then(() => {
+                        return db.collection('bicycleRecords').doc(id).update({
+                            status: 'Returned',
+                            returnDate: new Date().toISOString()
+                        });
+                    })
+                    .then(() => {
+                        showNotification('Bicycle marked as returned');
+                        updateInventoryStats();
+                    })
+                    .catch((error) => {
+                        console.error("Error marking as returned: ", error);
+                        showNotification('Error marking as returned', 'error');
+                    });
+            }
+        }
+        </script>
+        <script>
+            // Load and display arrivals
+            function loadArrivals() {
+                db.collection('arrivals')
+                    .orderBy('timestamp', 'desc')
+                    .get()
+                    .then((snapshot) => {
+                        arrivals = [];
+                        snapshot.forEach((doc) => {
+                            arrivals.push({ id: doc.id, ...doc.data() });
+                        });
+                        displayArrivals();
+                    })
+                    .catch((error) => {
+                        console.error("Error loading arrivals: ", error);
+                        showNotification('Error loading arrivals', 'error');
+                    });
+            }
+            
+            function displayArrivals(arrivalsToShow = arrivals) {
+                const table = document.getElementById('arrivalsTable').getElementsByTagName('tbody')[0];
+                table.innerHTML = '';
+                
+                arrivalsToShow.forEach((arrival, index) => {
+                    const row = table.insertRow();
+                    row.innerHTML = `
+                        <td>${arrival.roomNumber}</td>
+                        <td>${arrival.guestName}</td>
+                        <td>${formatDate(arrival.arrivalDate)}</td>
+                        <td>${formatDate(arrival.departureDate)}</td>
+                        <td>${arrival.bicycleRequested}</td>
+                        <td>${arrival.status || 'Pending'}</td>
+                        <td class="no-print">
+                            ${arrival.status !== 'Bicycle Assigned' ? `
+                                <button class="edit-btn" onclick="editArrival(${index})">Edit</button>
+                                ${arrival.bicycleRequested === 'yes' ? 
+                                    `<button class="return-btn" onclick="assignBicycle('${arrival.id}')">Assign Bicycle</button>` : 
+                                    ''
+                                }
+                                <button class="delete-btn" onclick="deleteArrival('${arrival.id}')">Delete</button>
+                            ` : ''}
+                        </td>
+                    `;
+                });
+            }
+            
+            // Arrival form submission handler
+            arrivalForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const arrivalData = {
+                    roomNumber: document.getElementById('arrivalRoomNumber').value,
+                    guestName: document.getElementById('arrivalGuestName').value,
+                    arrivalDate: document.getElementById('arrivalDate').value,
+                    departureDate: document.getElementById('arrivalDepartureDate').value,
+                    bicycleRequested: document.getElementById('bicycleRequested').value,
+                    status: 'Pending',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+            
+                // Validate data
+                if (!validateDates(arrivalData.arrivalDate, arrivalData.departureDate)) return;
+                if (!validateRoomNumber(arrivalData.roomNumber)) return;
+            
+                const editIndex = document.getElementById('arrivalEditIndex').value;
+            
+                if (editIndex !== '') {
+                    updateArrival(arrivalData, editIndex);
+                } else {
+                    addArrival(arrivalData);
+                }
+            });
+            
+            function addArrival(arrivalData) {
+                db.collection('arrivals').add(arrivalData)
+                    .then(() => {
+                        showNotification('Arrival registered successfully');
+                        arrivalForm.reset();
+                        document.getElementById('arrivalDate').valueAsDate = new Date();
+                    })
+                    .catch((error) => {
+                        console.error("Error adding arrival: ", error);
+                        showNotification('Error registering arrival', 'error');
+                    });
+            }
+            
+            function updateArrival(arrivalData, index) {
+                const docId = arrivals[index].id;
+                
+                db.collection('arrivals').doc(docId).update(arrivalData)
+                    .then(() => {
+                        showNotification('Arrival updated successfully');
+                        arrivalForm.reset();
+                        document.getElementById('arrivalEditIndex').value = '';
+                        document.getElementById('arrivalDate').valueAsDate = new Date();
+                    })
+                    .catch((error) => {
+                        console.error("Error updating arrival: ", error);
+                        showNotification('Error updating arrival', 'error');
+                    });
+            }
+            
+            function editArrival(index) {
+                const arrival = arrivals[index];
+                document.getElementById('arrivalRoomNumber').value = arrival.roomNumber;
+                document.getElementById('arrivalGuestName').value = arrival.guestName;
+                document.getElementById('arrivalDate').value = arrival.arrivalDate;
+                document.getElementById('arrivalDepartureDate').value = arrival.departureDate;
+                document.getElementById('bicycleRequested').value = arrival.bicycleRequested;
+                document.getElementById('arrivalEditIndex').value = index;
+            }
+            
+            function deleteArrival(id) {
+                if (confirm('Are you sure you want to delete this arrival record?')) {
+                    db.collection('arrivals').doc(id).delete()
+                        .then(() => {
+                            showNotification('Arrival record deleted successfully');
+                        })
+                        .catch((error) => {
+                            console.error("Error deleting arrival: ", error);
+                            showNotification('Error deleting arrival', 'error');
+                        });
+                }
+            }
+            
+            function assignBicycle(arrivalId) {
+                const arrival = arrivals.find(a => a.id === arrivalId);
+                if (!arrival) return;
+            
+                // Get available bicycles
+                db.collection('bicycleInventory')
+                    .where('status', '==', 'Available')
+                    .limit(1)
+                    .get()
+                    .then((snapshot) => {
+                        if (snapshot.empty) {
+                            showNotification('No bicycles available', 'error');
+                            return;
+                        }
+            
+                        const bicycle = snapshot.docs[0];
+                        const bicycleNumber = bicycle.data().bicycleNumber;
+            
+                        // Create a new record
+                        const recordData = {
+                            roomNumber: arrival.roomNumber,
+                            guestName: arrival.guestName,
+                            issueDate: arrival.arrivalDate,
+                            departureDate: arrival.departureDate,
+                            bicycleNumber: bicycleNumber,
+                            status: 'Active',
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        };
+            
+                        // Update bicycle status
+                        return Promise.all([
+                            bicycle.ref.update({ status: 'Issued' }),
+                            db.collection('bicycleRecords').add(recordData),
+                            db.collection('arrivals').doc(arrivalId).update({
+                                status: 'Bicycle Assigned',
+                                assignedBicycle: bicycleNumber
+                            })
+                        ]);
+                    })
+                    .then(() => {
+                        showNotification('Bicycle assigned successfully');
+                        updateInventoryStats();
+                    })
+                    .catch((error) => {
+                        console.error("Error assigning bicycle: ", error);
+                        showNotification('Error assigning bicycle', 'error');
+                    });
+            }
+            </script>
+            <script>
+                // Load and display inventory
+                function loadInventory() {
+                    db.collection('bicycleInventory')
+                        .orderBy('bicycleNumber')
+                        .get()
+                        .then((snapshot) => {
+                            inventory = [];
+                            snapshot.forEach((doc) => {
+                                inventory.push({ id: doc.id, ...doc.data() });
+                            });
+                            displayInventory();
+                            updateInventoryStats();
+                        })
+                        .catch((error) => {
+                            console.error("Error loading inventory: ", error);
+                            showNotification('Error loading inventory', 'error');
+                        });
+                }
+                
+                function displayInventory() {
+                    const table = document.getElementById('inventoryTable').getElementsByTagName('tbody')[0];
+                    table.innerHTML = '';
+                    
+                    inventory.forEach((bicycle) => {
+                        const row = table.insertRow();
+                        row.innerHTML = `
+                            <td>${bicycle.bicycleNumber}</td>
+                            <td>${bicycle.status}</td>
+                            <td>${bicycle.lastMaintenance ? formatDate(bicycle.lastMaintenance) : 'Not recorded'}</td>
+                            <td class="no-print">
+                                ${bicycle.status === 'Available' ? `
+                                    <button class="edit-btn" onclick="markBicycleForMaintenance('${bicycle.id}')">Mark for Maintenance</button>
+                                ` : bicycle.status === 'Maintenance' ? `
+                                    <button class="return-btn" onclick="markBicycleAsAvailable('${bicycle.id}')">Mark as Available</button>
+                                ` : ''}
+                                <button class="delete-btn" onclick="deleteBicycle('${bicycle.id}')">Remove</button>
+                            </td>
+                        `;
+                    });
+                }
+                
+                function addNewBicycle() {
+                    const bicycleNumber = document.getElementById('newBicycleNumber').value;
+                    
+                    if (!validateBicycleNumber(bicycleNumber)) return;
+                
+                    // Check if bicycle number already exists
+                    db.collection('bicycleInventory')
+                        .where('bicycleNumber', '==', bicycleNumber)
+                        .get()
+                        .then((snapshot) => {
+                            if (!snapshot.empty) {
+                                showNotification('Bicycle number already exists', 'error');
+                                return;
+                            }
+                
+                            return db.collection('bicycleInventory').add({
+                                bicycleNumber: bicycleNumber,
+                                status: 'Available',
+                                lastMaintenance: null,
+                                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        })
+                        .then(() => {
+                            showNotification('New bicycle added successfully');
+                            document.getElementById('newBicycleNumber').value = '';
+                            updateInventoryStats();
+                        })
+                        .catch((error) => {
+                            console.error("Error adding bicycle: ", error);
+                            showNotification('Error adding bicycle', 'error');
+                        });
+                }
+                
+                function markBicycleForMaintenance(id) {
+                    if (confirm('Mark this bicycle for maintenance?')) {
+                        db.collection('bicycleInventory').doc(id).update({
+                            status: 'Maintenance',
+                            lastMaintenance: new Date().toISOString()
+                        })
+                        .then(() => {
+                            showNotification('Bicycle marked for maintenance');
+                            updateInventoryStats();
+                        })
+                        .catch((error) => {
+                            console.error("Error marking for maintenance: ", error);
+                            showNotification('Error updating bicycle status', 'error');
+                        });
+                    }
+                }
+                
+                function markBicycleAsAvailable(id) {
+                    if (confirm('Mark this bicycle as available?')) {
+                        db.collection('bicycleInventory').doc(id).update({
+                            status: 'Available'
+                        })
+                        .then(() => {
+                            showNotification('Bicycle marked as available');
+                            updateInventoryStats();
+                        })
+                        .catch((error) => {
+                            console.error("Error marking as available: ", error);
+                            showNotification('Error updating bicycle status', 'error');
+                        });
+                    }
+                }
+                
+                function deleteBicycle(id) {
+                    if (confirm('Are you sure you want to remove this bicycle from inventory?')) {
+                        const bicycle = inventory.find(b => b.id === id);
+                        
+                        if (bicycle.status === 'Issued') {
+                            showNotification('Cannot remove bicycle while it is issued', 'error');
+                            return;
+                        }
+                
+                        db.collection('bicycleInventory').doc(id).delete()
+                            .then(() => {
+                                showNotification('Bicycle removed from inventory');
+                                updateInventoryStats();
+                            })
+                            .catch((error) => {
+                                console.error("Error removing bicycle: ", error);
+                                showNotification('Error removing bicycle', 'error');
+                            });
+                    }
+                }
+                </script>
+                <script>
+                    // Search Functions
+                    function searchByBicycle() {
+                        const searchTerm = document.getElementById('bicycleSearch').value.toLowerCase();
+                        if (!searchTerm) {
+                            showNotification('Please enter a bicycle number', 'error');
+                            return;
+                        }
+                        const filtered = records.filter(record => 
+                            record.bicycleNumber.toLowerCase().includes(searchTerm)
+                        );
+                        displayRecords(filtered);
+                    }
+                    
+                    function searchByRoom() {
+                        const searchTerm = document.getElementById('roomSearch').value.toLowerCase();
+                        if (!searchTerm) {
+                            showNotification('Please enter a room number', 'error');
+                            return;
+                        }
+                        const filtered = records.filter(record => 
+                            record.roomNumber.toLowerCase().includes(searchTerm)
+                        );
+                        displayRecords(filtered);
+                    }
+                    
+                    function searchArrivals() {
+                        const searchTerm = document.getElementById('arrivalSearch').value.toLowerCase();
+                        if (!searchTerm) {
+                            showNotification('Please enter a search term', 'error');
+                            return;
+                        }
+                        const filtered = arrivals.filter(arrival => 
+                            arrival.roomNumber.toLowerCase().includes(searchTerm) ||
+                            arrival.guestName.toLowerCase().includes(searchTerm)
+                        );
+                        displayArrivals(filtered);
+                    }
+                    
+                    // Reset search functions
+                    function resetSearch() {
+                        document.getElementById('bicycleSearch').value = '';
+                        document.getElementById('roomSearch').value = '';
+                        displayRecords();
+                    }
+                    
+                    function resetArrivalSearch() {
+                        document.getElementById('arrivalSearch').value = '';
+                        displayArrivals();
+                    }
+                    
+                    // Print Functions
+                    function printRecords() {
+                        const printWindow = window.open('', '_blank');
+                        const today = new Date().toLocaleDateString();
+                        const activeRecords = records.filter(record => record.status !== 'Returned');
+                    
+                        printWindow.document.write(`
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <title>Bicycle Records - ${today}</title>
+                                <style>
+                                    body { 
+                                        font-family: Arial, sans-serif; 
+                                        padding: 20px; 
+                                    }
+                                    h1 { 
+                                        color: #2c3e50; 
+                                        text-align: center;
+                                    }
+                                    table { 
+                                        width: 100%; 
+                                        border-collapse: collapse; 
+                                        margin-top: 20px;
+                                    }
+                                    th, td { 
+                                        border: 1px solid #ddd; 
+                                        padding: 12px; 
+                                        text-align: left; 
+                                    }
+                                    th { 
+                                        background-color: #4CAF50; 
+                                        color: white;
+                                    }
+                                    .summary {
+                                        margin: 20px 0;
+                                        padding: 10px;
+                                        background-color: #f8f9fa;
+                                        border-radius: 4px;
+                                    }
+                                </style>
+                            </head>
+                            <body>
+                                <h1>Active Bicycle Records - ${today}</h1>
+                                <div class="summary">
+                                    <p>Total Active Records: ${activeRecords.length}</p>
+                                    <p>Generated on: ${today}</p>
+                                </div>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Room Number</th>
+                                            <th>Guest Name</th>
+                                            <th>Issue Date</th>
+                                            <th>Departure Date</th>
+                                            <th>Bicycle Number</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${activeRecords.map(record => `
+                                            <tr>
+                                                <td>${record.roomNumber}</td>
+                                                <td>${record.guestName}</td>
+                                                <td>${formatDate(record.issueDate)}</td>
+                                                <td>${formatDate(record.departureDate)}</td>
+                                                <td>${record.bicycleNumber}</td>
+                                                <td>${record.status || 'Active'}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </body>
+                            </html>
+                        `);
+                        printWindow.document.close();
+                        printWindow.print();
+                    }
+                    
+                    function printArrivals() {
+                        const printWindow = window.open('', '_blank');
+                        const today = new Date().toLocaleDateString();
+                        const pendingArrivals = arrivals.filter(arrival => arrival.status === 'Pending');
+                    
+                        printWindow.document.write(`
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <title>Pending Arrivals - ${today}</title>
+                                <style>
+                                    body { 
+                                        font-family: Arial, sans-serif; 
+                                        padding: 20px; 
+                                    }
+                                    h1 { 
+                                        color: #2c3e50; 
+                                        text-align: center;
+                                    }
+                                    table { 
+                                        width: 100%; 
+                                        border-collapse: collapse; 
+                                        margin-top: 20px;
+                                    }
+                                    th, td { 
+                                        border: 1px solid #ddd; 
+                                        padding: 12px; 
+                                        text-align: left; 
+                                    }
+                                    th { 
+                                        background-color: #4CAF50; 
+                                        color: white;
+                                    }
+                                    .summary {
+                                        margin: 20px 0;
+                                        padding: 10px;
+                                        background-color: #f8f9fa;
+                                        border-radius: 4px;
+                                    }
+                                    .bicycle-requested {
+                                        background-color: #e8f5e9;
+                                    }
+                                </style>
+                            </head>
+                            <body>
+                                <h1>Pending Arrivals - ${today}</h1>
+                                <div class="summary">
+                                    <p>Total Pending Arrivals: ${pendingArrivals.length}</p>
+                                    <p>Bicycles Requested: ${pendingArrivals.filter(a => a.bicycleRequested === 'yes').length}</p>
+                                    <p>Generated on: ${today}</p>
+                                </div>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Room Number</th>
+                                            <th>Guest Name</th>
+                                            <th>Arrival Date</th>
+                                            <th>Departure Date</th>
+                                            <th>Bicycle Requested</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${pendingArrivals.map(arrival => `
+                                            <tr class="${arrival.bicycleRequested === 'yes' ? 'bicycle-requested' : ''}">
+                                                <td>${arrival.roomNumber}</td>
+                                                <td>${arrival.guestName}</td>
+                                                <td>${formatDate(arrival.arrivalDate)}</td>
+                                                <td>${formatDate(arrival.departureDate)}</td>
+                                                <td>${arrival.bicycleRequested}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </body>
+                            </html>
+                        `);
+                        printWindow.document.close();
+                        printWindow.print();
+                    }
+                    
+                    function printInventory() {
+                        const printWindow = window.open('', '_blank');
+                        const today = new Date().toLocaleDateString();
+                    
+                        printWindow.document.write(`
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <title>Bicycle Inventory - ${today}</title>
+                                <style>
+                                    body { 
+                                        font-family: Arial, sans-serif; 
+                                        padding: 20px; 
+                                    }
+                                    h1 { 
+                                        color: #2c3e50; 
+                                        text-align: center;
+                                    }
+                                    .stats-grid {
+                                        display: grid;
+                                        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                                        gap: 20px;
+                                        margin: 20px 0;
+                                    }
+                                    .stat-card {
+                                        background-color: #f8f9fa;
+                                        padding: 15px;
+                                        border-radius: 4px;
+                                        text-align: center;
+                                    }
+                                    .stat-number {
+                                        font-size: 24px;
+                                        font-weight: bold;
+                                        color: #4CAF50;
+                                    }
+                                    table { 
+                                        width: 100%; 
+                                        border-collapse: collapse; 
+                                        margin-top: 20px;
+                                    }
+                                    th, td { 
+                                        border: 1px solid #ddd; 
+                                        padding: 12px; 
+                                        text-align: left; 
+                                    }
+                                    th { 
+                                        background-color: #4CAF50; 
+                                        color: white;
+                                    }
+                                    .status-maintenance {
+                                        background-color: #fff3e0;
+                                    }
+                                    .status-issued {
+                                        background-color: #e8f5e9;
+                                    }
+                                </style>
+                            </head>
+                            <body>
+                                <h1>Bicycle Inventory Report - ${today}</h1>
+                                <div class="stats-grid">
+                                    <div class="stat-card">
+                                        <h3>Total Bicycles</h3>
+                                        <div class="stat-number">${inventory.length}</div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <h3>Available</h3>
+                                        <div class="stat-number">${inventory.filter(b => b.status === 'Available').length}</div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <h3>Issued</h3>
+                                        <div class="stat-number">${inventory.filter(b => b.status === 'Issued').length}</div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <h3>Under Maintenance</h3>
+                                        <div class="stat-number">${inventory.filter(b => b.status === 'Maintenance').length}</div>
+                                    </div>
+                                </div>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Bicycle Number</th>
+                                            <th>Status</th>
+                                            <th>Last Maintenance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${inventory.map(bicycle => `
+                                            <tr class="status-${bicycle.status.toLowerCase()}">
+                                                <td>${bicycle.bicycleNumber}</td>
+                                                <td>${bicycle.status}</td>
+                                                <td>${bicycle.lastMaintenance ? formatDate(bicycle.lastMaintenance) : 'Not recorded'}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </body>
+                            </html>
+                        `);
+                        printWindow.document.close();
+                        printWindow.print();
+                    }
+                    
+                    // Export functions
+                    function exportToCSV(data, filename) {
+                        const csvContent = data.map(item => 
+                            Object.values(item).join(',')
+                        ).join('\n');
+                    
+                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                        const link = document.createElement('a');
+                        if (link.download !== undefined) {
+                            const url = URL.createObjectURL(blob);
+                            link.setAttribute('href', url);
+                            link.setAttribute('download', filename);
+                            link.style.visibility = 'hidden';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }
+                    }
+                    </script>
