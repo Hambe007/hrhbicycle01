@@ -4,66 +4,98 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hotel Bicycle Management System</title>
-    
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
-    
-    <!-- Custom CSS -->
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f8f9fa;
+            margin: 0;
             padding: 20px;
+            background-color: #f5f5f5;
         }
-
         .container {
             max-width: 1200px;
             margin: 0 auto;
         }
-
+        .tab-container {
+            margin-bottom: 20px;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            margin-right: 5px;
+            border: none;
+            background-color: #e0e0e0;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .tab-button.active {
+            background-color: #007bff;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+            background-color: white;
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .table {
+            width: 100%;
+            margin-top: 20px;
+        }
+        .table th, .table td {
+            padding: 12px;
+            text-align: left;
+        }
+        .btn-assign {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .status-assigned {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-pending {
+            color: #ffc107;
+            font-weight: bold;
+        }
         .card {
             margin-bottom: 20px;
             border: none;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
         .card-header {
             background-color: #fff;
             border-bottom: 2px solid #f0f0f0;
             padding: 15px 20px;
         }
-
         .card-body {
             padding: 20px;
         }
-
         .btn-primary {
             background-color: #007bff;
             border-color: #007bff;
         }
-
         .btn-success {
             background-color: #28a745;
             border-color: #28a745;
         }
-
         .table {
             margin-bottom: 0;
         }
-
         .table th {
             border-top: none;
             background-color: #f8f9fa;
         }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
         .alert {
             margin-bottom: 1rem;
         }
@@ -72,111 +104,179 @@
 <body>
     <div class="container">
         <h1 class="text-center mb-4">Hotel Bicycle Management System</h1>
-
-        <!-- Bicycle Issuing Section -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Bicycle Issuing</h5>
-            </div>
-            <div class="card-body">
-                <form id="issuingForm">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="roomNumber">Room Number</label>
-                                <input type="text" class="form-control" id="roomNumber" required>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="guestName">Guest Name</label>
-                                <input type="text" class="form-control" id="guestName" required>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="bicycleNumber">Bicycle Number</label>
-                                <input type="text" class="form-control" id="bicycleNumber" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="issueDate">Issue Date</label>
-                                <input type="date" class="form-control" id="issueDate" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="returnDate">Return Date</label>
-                                <input type="date" class="form-control" id="returnDate" required>
-                            </div>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary mt-3">Issue Bicycle</button>
-                </form>
-            </div>
+        
+        <div class="tab-container">
+            <button class="tab-button active" onclick="showTab('issuing')">Bicycle Issuing</button>
+            <button class="tab-button" onclick="showTab('arrivals')">Arriving Guests</button>
+            <button class="tab-button" onclick="showTab('faulty')">Faulty Bicycles</button>
         </div>
 
-        <!-- Active Rentals Section -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Active Rentals</h5>
+        <!-- Existing Bicycle Issuing Tab Content -->
+        <div id="issuingTab" class="tab-content active">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Bicycle Issuing</h5>
+                </div>
+                <div class="card-body">
+                    <form id="issuingForm">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="roomNumber">Room Number</label>
+                                    <input type="text" class="form-control" id="roomNumber" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="guestName">Guest Name</label>
+                                    <input type="text" class="form-control" id="guestName" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="bicycleNumber">Bicycle Number</label>
+                                    <input type="text" class="form-control" id="bicycleNumber" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="issueDate">Issue Date</label>
+                                    <input type="date" class="form-control" id="issueDate" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="returnDate">Return Date</label>
+                                    <input type="date" class="form-control" id="returnDate" required>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Issue Bicycle</button>
+                    </form>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Room</th>
-                                <th>Guest Name</th>
-                                <th>Bicycle #</th>
-                                <th>Issue Date</th>
-                                <th>Return Date</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="activeRentalsTable">
-                            <!-- Active rentals will be populated here -->
-                        </tbody>
-                    </table>
+
+            <!-- Active Rentals Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Active Rentals</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Room</th>
+                                    <th>Guest Name</th>
+                                    <th>Bicycle #</th>
+                                    <th>Issue Date</th>
+                                    <th>Return Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activeRentalsTable">
+                                <!-- Active rentals will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rental History Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Rental History</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Room</th>
+                                    <th>Guest Name</th>
+                                    <th>Bicycle #</th>
+                                    <th>Issue Date</th>
+                                    <th>Return Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rentalHistoryTable">
+                                <!-- Rental history will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Rental History Section -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Rental History</h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Room</th>
-                                <th>Guest Name</th>
-                                <th>Bicycle #</th>
-                                <th>Issue Date</th>
-                                <th>Return Date</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="rentalHistoryTable">
-                            <!-- Rental history will be populated here -->
-                        </tbody>
-                    </table>
+        <!-- New Arrivals Tab -->
+        <div id="arrivalsTab" class="tab-content">
+            <h2>Arriving Guests</h2>
+            
+            <!-- Add New Guest Form -->
+            <form id="newGuestForm" class="mb-4">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="roomNumber">Room Number</label>
+                            <input type="text" class="form-control" id="roomNumber" required>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="guestName">Guest Name</label>
+                            <input type="text" class="form-control" id="guestName" required>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="arrivalDate">Arrival Date</label>
+                            <input type="date" class="form-control" id="arrivalDate" required>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="departureDate">Departure Date</label>
+                            <input type="date" class="form-control" id="departureDate" required>
+                        </div>
+                    </div>
                 </div>
+                <button type="submit" class="btn btn-primary mt-3">Add Guest</button>
+            </form>
+
+            <!-- Arriving Guests Table -->
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Room</th>
+                            <th>Guest Name</th>
+                            <th>Arrival Date</th>
+                            <th>Departure Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="arrivingGuestsTable">
+                        <!-- Table content will be populated dynamically -->
+                    </tbody>
+                </table>
             </div>
+        </div>
+
+        <!-- Existing Faulty Bicycles Tab Content -->
+        <div id="faultyTab" class="tab-content">
+            <!-- Previous faulty content remains the same -->
         </div>
     </div>
 
-    <!-- Bootstrap JS and Popper.js -->
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js"></script>
-
+    <!-- Firebase Configuration -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    
     <script>
         // Firebase Configuration
         const firebaseConfig = {
@@ -192,8 +292,119 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Set today's date as default for issue date
-        document.getElementById('issueDate').valueAsDate = new Date();
+        // Tab Switching Function
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            document.querySelector(`button[onclick="showTab('${tabName}')"]`).classList.add('active');
+        }
+
+        // Set default dates
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('arrivalDate').value = today;
+            
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('departureDate').value = tomorrow.toISOString().split('T')[0];
+            
+            loadArrivingGuests();
+        });
+
+        // Handle New Guest Form Submission
+        document.getElementById('newGuestForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const guestData = {
+                roomNumber: document.getElementById('roomNumber').value,
+                guestName: document.getElementById('guestName').value,
+                arrivalDate: document.getElementById('arrivalDate').value,
+                departureDate: document.getElementById('departureDate').value,
+                status: 'Pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            try {
+                await db.collection('arrivingGuests').add(guestData);
+                this.reset();
+                
+                // Reset dates to default
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('arrivalDate').value = today;
+                
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                document.getElementById('departureDate').value = tomorrow.toISOString().split('T')[0];
+                
+                alert('Guest added successfully!');
+            } catch (error) {
+                console.error('Error adding guest:', error);
+                alert('Error adding guest. Please try again.');
+            }
+        });
+
+        // Load Arriving Guests
+        async function loadArrivingGuests() {
+            try {
+                const snapshot = await db.collection('arrivingGuests')
+                    .orderBy('timestamp', 'desc')
+                    .get();
+
+                const tbody = document.getElementById('arrivingGuestsTable');
+                tbody.innerHTML = '';
+
+                snapshot.forEach(doc => {
+                    const guest = doc.data();
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>${guest.roomNumber}</td>
+                        <td>${guest.guestName}</td>
+                        <td>${formatDate(guest.arrivalDate)}</td>
+                        <td>${formatDate(guest.departureDate)}</td>
+                        <td class="status-${guest.status.toLowerCase()}">${guest.status}</td>
+                        <td>
+                            ${guest.status === 'Pending' ? 
+                                `<button onclick="assignBicycle('${doc.id}')" class="btn-assign">Assign Bicycle</button>` :
+                                'Assigned'}
+                        </td>
+                    `;
+                });
+            } catch (error) {
+                console.error('Error loading arriving guests:', error);
+            }
+        }
+
+        // Assign Bicycle to Guest
+        async function assignBicycle(guestId) {
+            try {
+                await db.collection('arrivingGuests').doc(guestId).update({
+                    status: 'Assigned'
+                });
+                loadArrivingGuests();
+                alert('Bicycle assigned successfully!');
+            } catch (error) {
+                console.error('Error assigning bicycle:', error);
+                alert('Error assigning bicycle. Please try again.');
+            }
+        }
+
+        // Format date for display
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString();
+        }
+
+        // Real-time updates
+        db.collection('arrivingGuests').onSnapshot(() => {
+            loadArrivingGuests();
+        });
 
         // Form submission handler
         document.getElementById('issuingForm').addEventListener('submit', async function(e) {
@@ -295,11 +506,6 @@
                 console.error('Error returning bicycle:', error);
                 alert('Error returning bicycle. Please try again.');
             }
-        }
-
-        // Format date for display
-        function formatDate(dateString) {
-            return new Date(dateString).toLocaleDateString();
         }
 
         // Initialize the page
