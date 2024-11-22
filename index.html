@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Bicycle Management System</title>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    <!-- PDF.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+
+    <style>
+        /* Previous styles remain the same */
+        
+        /* New styles for arrivals tab */
+        .upload-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .guest-item {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .pdf-preview {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .bicycle-assignment {
+            background-color: #e8f5e9;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+
+        .status-scheduled {
+            color: #ff9800;
+            font-weight: bold;
+        }
+
+        .status-assigned {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Hotel Bicycle Management System</h1>
+    </div>
+
+    <div id="todayDepartures" class="departure-notice" style="display: none;">
+        <h3>Today's Departures:</h3>
+        <div id="departuresList"></div>
+    </div>
+
+    <div class="tab-container no-print">
+        <div class="tab-buttons">
+            <button class="tab-button active" onclick="showTab('issuing')">Bicycle Issuing</button>
+            <button class="tab-button" onclick="showTab('arrivals')">Arriving Guests</button>
+            <button class="tab-button" onclick="showTab('faulty')">Faulty Bicycles</button>
+        </div>
+    </div>
+
+    <!-- Existing tabs content remains the same -->
+
+    <!-- New Arrivals Tab -->
+    <div id="arrivalsTab" class="tab-content">
+        <div class="form-section no-print">
+            <h2>Upload Guest Arrival List</h2>
+            <div class="upload-section">
+                <input type="file" id="pdfUpload" accept=".pdf" />
+                <button onclick="processPDF()" class="upload-btn">Process PDF</button>
+                <div id="loadingSpinner" class="loading-spinner"></div>
+            </div>
+            
+            <div id="extractedData" style="display: none;">
+                <h3>Extracted Guest Information</h3>
+                <div id="pdfPreview" class="pdf-preview"></div>
+                <div id="guestList"></div>
+                <button onclick="assignBicycles()" class="assign-btn">Assign Bicycles</button>
+            </div>
+        </div>
+
+        <div class="search-section no-print">
+            <div class="search-group">
+                <input type="text" id="arrivalSearch" placeholder="Search by guest name or room...">
+                <button onclick="searchArrivals()">Search</button>
+                <button onclick="resetArrivalsSearch()">Reset</button>
+                <button onclick="printArrivals()" class="print-btn">Print Assignments</button>
+            </div>
+        </div>
+
+        <table id="arrivalsTable">
+            <thead>
+                <tr>
+                    <th>Room Number</th>
+                    <th>Guest Name</th>
+                    <th>Arrival Date</th>
+                    <th>Departure Date</th>
+                    <th>Bicycle Status</th>
+                    <th>Assigned Bicycle</th>
+                    <th class="no-print">Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // Initialize PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBjAGc8L0bkO_2RbWi0-rw7__lSHCoBrJQ",
+            authDomain: "bicycle-issuing-system2.firebaseapp.com",
+            projectId: "bicycle-issuing-system2",
+            storageBucket: "bicycle-issuing-system2.firebasestorage.app",
+            messagingSenderId: "64926990610",
+            appId: "1:64926990610:web:f45390888ea1d0dfb5f3cb"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Global variables
+        let arrivingGuests = [];
+        let extractedText = '';
+
+        // Enhanced PDF processing
+        async function processPDF() {
+            const fileInput = document.getElementById('pdfUpload');
+            const spinner = document.getElementById('loadingSpinner');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showNotification('Please select a PDF file', 'error');
+                return;
+            }
+
+            try {
+                spinner.style.display = 'block';
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                
+                extractedText = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    extractedText += textContent.items.map(item => item.str).join(' ');
+                }
+
+                // Show preview of extracted text
+                document.getElementById('pdfPreview').innerHTML = `
+                    <h4>Extracted Content Preview:</h4>
+                    <pre>${extractedText.substring(0, 500)}...</pre>
+                `;
+
+                const guestInfo = parseGuestInformation(extractedText);
+                displayExtractedGuests(guestInfo);
+            } catch (error) {
+                console.error('Error processing PDF:', error);
+                showNotification('Error processing PDF file', 'error');
+            } finally {
+                spinner.style.display = 'none';
+            }
+        }
+
+        // Enhanced guest information parsing
+        function parseGuestInformation(text) {
+            const guests = [];
+            // Add multiple pattern matching for different PDF formats
+            const patterns = [
+                // Pattern 1: Standard format
+                /Room:\s*(\d+)\s*Name:\s*([^\n]+)\s*Arrival:\s*(\d{2}\/\d{2}\/\d{4})\s*Departure:\s*(\d{2}\/\d{2}\/\d{4})/g,
+                // Pattern 2: Alternative format
+                /(\d{3,4})\s*\|\s*([^|]+)\|\s*(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{2}\/\d{4})/g,
+                // Add more patterns as needed
+            ];
+
+            patterns.forEach(pattern => {
+                let match;
+                while ((match = pattern.exec(text)) !== null) {
+                    guests.push({
+                        roomNumber: match[1],
+                        guestName: match[2].trim(),
+                        arrivalDate: match[3],
+                        departureDate: match[4],
+                        bicycleStatus: 'Pending',
+                        assignedBicycle: null
+                    });
+                }
+            });
+
+            // Remove duplicates based on room number
+            return Array.from(new Map(guests.map(guest => 
+                [guest.roomNumber, guest]
+            )).values());
+        }
+
+        // Enhanced display of extracted guests
+        function displayExtractedGuests(guests) {
+            arrivingGuests = guests;
+            const guestList = document.getElementById('guestList');
+            const extractedData = document.getElementById('extractedData');
+            
+            if (guests.length === 0) {
+                showNotification('No guest information found in PDF', 'error');
+                return;
+            }
+
+            guestList.innerHTML = guests.map(guest => `
+                <div class="guest-item">
+                    <p><strong>Room ${guest.roomNumber}</strong> - ${guest.guestName}</p>
+                    <p>Arrival: ${guest.arrivalDate} | Departure: ${guest.departureDate}</p>
+                    <p>Status: <span class="status-${guest.bicycleStatus.toLowerCase()}">${guest.bicycleStatus}</span></p>
+                </div>
+            `).join('');
+            
+            extractedData.style.display = 'block';
+            updateArrivalsTable();
+            showNotification(`Successfully extracted ${guests.length} guest records`);
+        }
+
+        // Enhanced bicycle assignment
+        async function assignBicycles() {
+            const spinner = document.getElementById('loadingSpinner');
+            spinner.style.display = 'block';
+            
+            try {
+                const availableBicycles = await getAvailableBicycles();
+                const assignments = [];
+                
+                for (let guest of arrivingGuests) {
+                    if (guest.bicycleStatus === 'Pending' && availableBicycles.length > 0) {
+                        const bicycle = availableBicycles.pop();
+                        guest.bicycleStatus = 'Assigned';
+                        guest.assignedBicycle = bicycle;
+                        
+                        assignments.push(addBicycleRecord(guest));
+                    }
+                }
+                
+                await Promise.all(assignments);
+                updateArrivalsTable();
+                showNotification('Bicycles assigned successfully');
+            } catch (error) {
+                console.error('Error assigning bicycles:', error);
+                showNotification('Error assigning bicycles', 'error');
+            } finally {
+                spinner.style.display = 'none';
+            }
+        }
+
+        // Print arrivals report
+        function printArrivals() {
+            const printWindow = window.open('', '_blank');
+            const today = new Date().toLocaleDateString();
+            
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Arriving Guests Bicycle Assignments - ${today}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; }
+                        h1 { color: #2c3e50; }
+                        table { 
+                            width: 100%; 
+                            border-collapse: collapse; 
+                            margin-top: 20px;
+                        }
+                        th, td { 
+                            border: 1px solid #ddd; 
+                            padding: 8px; 
+                            text-align: left; 
+                        }
+                        th { background-color: #f5f5f5; }
+                        .assigned { color: #4CAF50; }
+                        .pending { color: #ff9800; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Arriving Guests Bicycle Assignments - ${today}</h1>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Room</th>
+                                <th>Guest Name</th>
+                                <th>Arrival</th>
+                                <th>Departure</th>
+                                <th>Status</th>
+                                <th>Bicycle</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${arrivingGuests.map(guest => `
+                                <tr>
+                                    <td>${guest.roomNumber}</td>
+                                    <td>${guest.guestName}</td>
+                                    <td>${guest.arrivalDate}</td>
+                                    <td>${guest.departureDate}</td>
+                                    <td class="${guest.bicycleStatus.toLowerCase()}">${guest.bicycleStatus}</td>
+                                    <td>${guest.assignedBicycle || '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        // Initialize the system
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEnhancedFeatures();
+            initializeArrivalsSystem();
+        });
+    </script>
+</body>
+</html>
