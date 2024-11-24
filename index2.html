@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bicycle Management System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 90%;
+            margin: 20px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            text-align: center;
+        }
+        .actions {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .actions input,
+        .actions button {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .form-section {
+            margin-bottom: 20px;
+        }
+        input,
+        textarea {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        button {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007BFF;
+            color: #fff;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        table th,
+        table td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bicycle Management System</h1>
+
+        <!-- Search and Print -->
+        <div class="actions">
+            <input type="text" id="searchInput" placeholder="Search Bicycle (e.g., 1001, K02)">
+            <button onclick="searchBike()">Search</button>
+            <button onclick="printReport()">Print Report</button>
+        </div>
+
+        <!-- Main Operations -->
+        <div class="form-section">
+            <h2>Issue a Bicycle</h2>
+            <input type="text" id="bikeNumber" placeholder="Bicycle Number">
+            <input type="text" id="guestName" placeholder="Guest Name">
+            <button onclick="issueBike()">Issue</button>
+        </div>
+
+        <div class="form-section">
+            <h2>Report Fault</h2>
+            <input type="text" id="faultyBikeNumber" placeholder="Faulty Bicycle Number">
+            <textarea id="faultDescription" placeholder="Fault Description"></textarea>
+            <button onclick="reportFault()">Report Fault</button>
+        </div>
+
+        <div class="form-section">
+            <h2>Prepare Bicycle for Guest</h2>
+            <input type="text" id="guestBikeNumber" placeholder="Bicycle Number for Guest">
+            <button onclick="prepareBike()">Prepare</button>
+        </div>
+
+        <!-- Inventory List -->
+        <div id="inventory">
+            <h2>Inventory</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Bicycle Number</th>
+                        <th>Status</th>
+                        <th>Guest Name</th>
+                        <th>Faults</th>
+                    </tr>
+                </thead>
+                <tbody id="bikeList">
+                    <!-- Dynamic Content -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Mock API Calls
+        let inventory = Array.from({ length: 501 }, (_, i) => ({
+            number: i + 1000,
+            status: "Available",
+            guest: "",
+            fault: ""
+        }))
+        .concat(Array.from({ length: 99 }, (_, i) => ({
+            number: `K${String(i + 1).padStart(2, '0')}`,
+            status: "Available",
+            guest: "",
+            fault: ""
+        })))
+        .concat(Array.from({ length: 50 }, (_, i) => ({
+            number: `Libero ${i + 1}`,
+            status: "Available",
+            guest: "",
+            fault: ""
+        })));
+
+        function fetchInventory() {
+            const bikeList = document.getElementById('bikeList');
+            bikeList.innerHTML = '';
+            inventory.forEach((bike) => {
+                bikeList.innerHTML += `
+                    <tr>
+                        <td>${bike.number}</td>
+                        <td>${bike.status}</td>
+                        <td>${bike.guest || 'N/A'}</td>
+                        <td>${bike.fault || 'N/A'}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function issueBike() {
+            const number = document.getElementById('bikeNumber').value;
+            const guest = document.getElementById('guestName').value;
+
+            const bike = inventory.find(b => b.number === number);
+            if (bike) {
+                bike.status = 'Issued';
+                bike.guest = guest;
+                alert(`Bicycle ${number} issued to ${guest}`);
+                fetchInventory();
+            } else {
+                alert('Bicycle not found!');
+            }
+        }
+
+        function reportFault() {
+            const number = document.getElementById('faultyBikeNumber').value;
+            const description = document.getElementById('faultDescription').value;
+
+            const bike = inventory.find(b => b.number === number);
+            if (bike) {
+                bike.status = 'Faulty';
+                bike.fault = description;
+                alert(`Fault reported for Bicycle ${number}`);
+                fetchInventory();
+            } else {
+                alert('Bicycle not found!');
+            }
+        }
+
+        function prepareBike() {
+            const number = document.getElementById('guestBikeNumber').value;
+
+            const bike = inventory.find(b => b.number === number);
+            if (bike) {
+                bike.status = 'Prepared';
+                alert(`Bicycle ${number} prepared for guest`);
+                fetchInventory();
+            } else {
+                alert('Bicycle not found!');
+            }
+        }
+
+        function printReport() {
+            window.print();
+        }
+
+        function searchBike() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+
+            const filtered = inventory.filter(bike => 
+                bike.number.toLowerCase().includes(search)
+            );
+
+            const bikeList = document.getElementById('bikeList');
+            bikeList.innerHTML = '';
+            filtered.forEach((bike) => {
+                bikeList.innerHTML += `
+                    <tr>
+                        <td>${bike.number}</td>
+                        <td>${bike.status}</td>
+                        <td>${bike.guest || 'N/A'}</td>
+                        <td>${bike.fault || 'N/A'}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Load initial inventory
+        fetchInventory();
+    </script>
+</body>
+</html>
