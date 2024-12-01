@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bicycle Management</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    h1, h3 { color: #333; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    .filters, .actions { margin: 20px 0; }
+    button { padding: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+    button:hover { background: #45a049; }
+    .notification { margin-top: 20px; padding: 10px; color: white; display: none; }
+    .success { background-color: #4CAF50; }
+    .error { background-color: #F44336; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Bicycle Management System</h1>
+    <div id="notification" class="notification"></div>
+
+    <!-- Filter Section -->
+    <div class="filters">
+      <h3>Filter Rentals</h3>
+      <input type="text" id="filter-guest" placeholder="Guest Name">
+      <input type="text" id="filter-room" placeholder="Room">
+      <input type="text" id="filter-bicycle" placeholder="Bicycle Number">
+      <label for="status">Status:</label>
+      <select id="filter-status">
+        <option value="">All</option>
+        <option value="Pending">Pending</option>
+        <option value="Resolved">Resolved</option>
+      </select>
+      <button id="apply-filters">Apply Filters</button>
+      <button id="clear-filters">Clear Filters</button>
+    </div>
+
+    <!-- Today's Departures Section -->
+    <div>
+      <h3>Today's Departures</h3>
+      <ul id="todays-departures"></ul>
+    </div>
+
+    <!-- Faults Section -->
+    <div>
+      <h3>Reported Faults</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Bicycle Number</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Reported At</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="faults-table-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Report Fault Section -->
+    <div class="actions">
+      <h3>Report Fault</h3>
+      <form id="faulty-bicycle-form">
+        <input type="text" id="faulty-bicycle-number" placeholder="Bicycle Number" required>
+        <textarea id="fault-description" placeholder="Describe the issue" required></textarea>
+        <button type="submit">Report Fault</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE_URL = 'https://your-backend-api-url'; // Replace with deployed backend URL
+
+    const showNotification = (message, type) => {
+      const notification = document.getElementById('notification');
+      notification.textContent = message;
+      notification.className = `notification ${type}`;
+      notification.style.display = 'block';
+      setTimeout(() => notification.style.display = 'none', 3000);
+    };
+
+    const fetchFaults = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/bicycles/faults`);
+        const faults = await response.json();
+        const faultsTableBody = document.getElementById('faults-table-body');
+        faultsTableBody.innerHTML = faults.map(fault => `
+          <tr>
+            <td>${fault.bicycleNumber}</td>
+            <td>${fault.description}</td>
+            <td>${fault.status}</td>
+            <td>${new Date(fault.createdAt).toLocaleDateString()}</td>
+            <td>
+              ${fault.status === 'Pending' ? `<button onclick="updateFaultStatus('${fault._id}', 'Resolved')">Mark as Resolved</button>` : ''}
+            </td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        showNotification('Failed to fetch fault reports', 'error');
+      }
+    };
+
+    const updateFaultStatus = async (id, status) => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/bicycles/faults/${id}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status }),
+        });
+        if (response.ok) {
+          showNotification('Fault status updated successfully', 'success');
+          fetchFaults();
+        } else {
+          throw new Error('Failed to update fault status');
+        }
+      } catch (error) {
+        showNotification(error.message, 'error');
+      }
+    };
+
+    const faultyBicycleForm = document.getElementById('faulty-bicycle-form');
+    faultyBicycleForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const bicycleNumber = document.getElementById('faulty-bicycle-number').value;
+      const description = document.getElementById('fault-description').value;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/bicycles/report-fault`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bicycleNumber, description }),
+        });
+        if (response.ok) {
+          showNotification('Fault reported successfully', 'success');
+          faultyBicycleForm.reset();
+          fetchFaults();
+        } else {
+          throw new Error('Failed to report fault');
+        }
+      } catch (error) {
+        showNotification(error.message, 'error');
+      }
+    });
+
+    // Load initial data
+    fetchFaults();
+  </script>
+</body>
+</html>
